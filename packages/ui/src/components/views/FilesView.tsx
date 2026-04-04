@@ -26,6 +26,7 @@ import {
   RiFileTransferLine,
   RiCodeSSlashLine,
   RiNodeTree,
+  RiDownloadLine,
 } from '@remixicon/react';
 import { toast } from '@/components/ui';
 import { copyTextToClipboard } from '@/lib/clipboard';
@@ -298,6 +299,7 @@ interface FileRowProps {
     canDelete: boolean;
     canReveal: boolean;
   };
+  downloadFile?: (path: string) => Promise<void>;
   contextMenuPath: string | null;
   setContextMenuPath: (path: string | null) => void;
   onSelect: (node: FileNode) => void;
@@ -314,6 +316,7 @@ const FileRow: React.FC<FileRowProps> = ({
   status,
   badge,
   permissions,
+  downloadFile,
   contextMenuPath,
   setContextMenuPath,
   onSelect,
@@ -420,6 +423,14 @@ const FileRow: React.FC<FileRowProps> = ({
               }}>
                 <RiFileCopyLine className="mr-2 h-4 w-4" /> Copy Path
               </DropdownMenuItem>
+              {!isDir && downloadFile && (
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  void downloadFile(node.path);
+                }}>
+                  <RiDownloadLine className="mr-2 h-4 w-4" /> Download
+                </DropdownMenuItem>
+              )}
               {canReveal && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRevealPath(node.path); }}>
                   <RiFolderReceivedLine className="mr-2 h-4 w-4" /> Reveal in Finder
@@ -1693,6 +1704,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full' }) => {
             status={!isDir ? getFileStatus(node.path) : undefined}
             badge={isDir ? getFolderBadge(node.path) : undefined}
             permissions={{ canRename, canCreateFile, canCreateFolder, canDelete, canReveal }}
+            downloadFile={files.downloadFile}
             contextMenuPath={contextMenuPath}
             setContextMenuPath={setContextMenuPath}
             onSelect={handleSelectFile}
@@ -2478,6 +2490,22 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full' }) => {
             ) : (
               <RiFileCopy2Line className="h-4 w-4" />
             )}
+          </Button>
+        )}
+
+        {files.downloadFile && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const fn = files.downloadFile;
+              if (fn) void fn(selectedFile.path);
+            }}
+            className="h-6 w-6 p-0"
+            title="Download file"
+            aria-label="Download file"
+          >
+            <RiDownloadLine className="h-4 w-4" />
           </Button>
         )}
 
