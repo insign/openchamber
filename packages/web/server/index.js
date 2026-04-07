@@ -752,6 +752,7 @@ const waitForOpenCodeReady = (...args) => openCodeLifecycleRuntime.waitForOpenCo
 const waitForAgentPresence = (...args) => openCodeLifecycleRuntime.waitForAgentPresence(...args);
 const refreshOpenCodeAfterConfigChange = (...args) => openCodeLifecycleRuntime.refreshOpenCodeAfterConfigChange(...args);
 const startHealthMonitoring = () => openCodeLifecycleRuntime.startHealthMonitoring(HEALTH_CHECK_INTERVAL);
+const waitForPortRelease = (...args) => openCodeLifecycleRuntime.waitForPortRelease(...args);
 const ensureGlobalWatcherStarted = async () => {
   if (globalWatcherStartPromise) {
     return globalWatcherStartPromise;
@@ -806,6 +807,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
     openCodeProcess = value;
   },
   killProcessOnPort,
+  waitForPortRelease,
   getServer: () => server,
   getUiAuthController: () => uiAuthController,
   setUiAuthController: (value) => {
