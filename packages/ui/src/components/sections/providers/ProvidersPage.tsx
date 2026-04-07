@@ -155,7 +155,7 @@ export const ProvidersPage: React.FC = () => {
   const [modelQuery, setModelQuery] = React.useState('');
   const [pendingOAuth, setPendingOAuth] = React.useState<{ providerId: string; methodIndex: number } | null>(null);
   const [oauthCodes, setOauthCodes] = React.useState<Record<string, string>>({});
-  const [oauthDetails, setOauthDetails] = React.useState<Record<string, { url?: string; instructions?: string; userCode?: string }>>({});
+  const [oauthDetails, setOauthDetails] = React.useState<Record<string, { url?: string; instructions?: string; userCode?: string; verifier?: string }>>({});
   const [availableProviders, setAvailableProviders] = React.useState<ProviderOption[]>([]);
   const [availableLoading, setAvailableLoading] = React.useState(false);
   const [availableError, setAvailableError] = React.useState<string | null>(null);
@@ -391,6 +391,9 @@ export const ProvidersPage: React.FC = () => {
         (typeof dataRecord.code === 'string' && dataRecord.code) ||
         (typeof dataRecord.userCode === 'string' && dataRecord.userCode) ||
         undefined;
+      const verifier = typeof dataRecord.verifier === 'string' && dataRecord.verifier
+        ? dataRecord.verifier
+        : undefined;
 
       if (!urlCandidate && !instructions && !userCode) {
         throw new Error('No OAuth details returned');
@@ -403,6 +406,7 @@ export const ProvidersPage: React.FC = () => {
           url: urlCandidate,
           instructions,
           userCode,
+          verifier,
         },
       }));
 
@@ -428,8 +432,12 @@ export const ProvidersPage: React.FC = () => {
 
     try {
       const requestBody: { method: number; code?: string } = { method: methodIndex };
+      const verifier = oauthDetails[codeKey]?.verifier?.trim();
       if (code) {
         requestBody.code = code;
+      }
+      if (verifier) {
+        (requestBody as { verifier?: string }).verifier = verifier;
       }
 
       const response = await fetch(`/api/provider/${encodeURIComponent(providerId)}/oauth/callback`, {

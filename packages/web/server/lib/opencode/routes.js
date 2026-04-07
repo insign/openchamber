@@ -23,6 +23,14 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
     return authLibrary;
   };
 
+  let anthropicOauthLibrary = null;
+  const getAnthropicOauthLibrary = async () => {
+    if (!anthropicOauthLibrary) {
+      anthropicOauthLibrary = await import('./anthropic-oauth.js');
+    }
+    return anthropicOauthLibrary;
+  };
+
   app.get('/api/config/settings', async (_req, res) => {
     try {
       const settings = await readSettingsFromDiskMigrated();
@@ -152,6 +160,56 @@ export const registerOpenCodeRoutes = (app, dependencies) => {
     } catch (error) {
       console.error('Failed to disconnect provider:', error);
       return res.status(500).json({ error: error.message || 'Failed to disconnect provider' });
+    }
+  });
+
+  app.post('/api/provider/:providerId/oauth/authorize', async (req, res) => {
+    try {
+      const { providerId } = req.params;
+      if (!providerId) {
+        return res.status(400).json({ error: 'Provider ID is required' });
+      }
+
+      const { isAnthropicProvider, startAnthropicOAuth } = await getAnthropicOauthLibrary();
+      if (!isAnthropicProvider(providerId)) {
+        return res.status(400).json({ error: `OAuth flow not supported for provider: ${providerId}` });
+      }
+
+      const data = await startAnthropicOAuth();
+      return res.json({ data });
+    } catch (error) {
+      console.error('Failed to start provider OAuth flow:', error);
+      return res.status(500).json({ error: error.message || 'Failed to start OAuth flow' });
+    }
+  });
+
+  app.post('/api/provider/:providerId/oauth/callback', async (req, res) => {
+    try {
+      const { providerId } = req.params;
+      if (!providerId) {
+        return res.status(400).json({ error: 'Provider ID is required' });
+      }
+
+      const { isAnthropicProvider, completeAnthropicOAuth } = await getAnthropicOauthLibrary();
+      if (!isAnthropicProvider(providerId)) {
+        return res.status(400).json({ error: `OAuth flow not supported for provider: ${providerId}` });
+      }
+
+      const code = typeof req.body?.code === 'string' ? req.body.code : '';
+      const verifier = typeof req.body?.verifier === 'string' ? req.body.verifier : '';
+      if (!code.trim()) {
+        return res.status(400).json({ error: 'Authorization code is required' });
+      }
+      if (!verifier.trim()) {
+        return res.status(400).json({ error: 'OAuth verifier is required' });
+      }
+
+      const data = await completeAnthropicOAuth(code, verifier);
+      await refreshOpenCodeAfterConfigChange(`provider ${providerId} oauth connected`);
+      return res.json({ data, requiresReload: true, reloadDelayMs: clientReloadDelayMs });
+    } catch (error) {
+      console.error('Failed to complete provider OAuth flow:', error);
+      return res.status(500).json({ error: error.message || 'Failed to complete OAuth flow' });
     }
   });
 
