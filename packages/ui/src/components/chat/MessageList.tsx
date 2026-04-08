@@ -373,13 +373,6 @@ const getNormalizedMessageForDisplay = (message: ChatMessageEntry): ChatMessageE
     return normalized;
 };
 
-const isAssistantTextOnlyMessage = (message: ChatMessageEntry): boolean => {
-    if (resolveMessageRole(message) !== 'assistant') {
-        return false;
-    }
-    return message.parts.length > 0 && message.parts.every((part) => part?.type === 'text');
-};
-
 interface MessageListProps {
     sessionKey: string;
     turnStart: number;
@@ -804,7 +797,7 @@ interface UngroupedMessageRowProps {
     activeStreamingPhase?: StreamPhase | null;
 }
 
-const UngroupedMessageRow: React.FC<UngroupedMessageRowProps> = React.memo(({
+const UngroupedMessageRow: React.FC<UngroupedMessageRowProps> = ({
     message,
     previousMessage,
     nextMessage,
@@ -830,18 +823,7 @@ const UngroupedMessageRow: React.FC<UngroupedMessageRowProps> = React.memo(({
             activeStreamingPhase={message.info.id === activeStreamingMessageId ? activeStreamingPhase : null}
         />
     );
-}, (prev, next) => {
-    return areRenderRelevantMessagesEqual(prev.message, next.message)
-        && areOptionalRenderRelevantMessagesEqual(prev.previousMessage, next.previousMessage)
-        && areOptionalRenderRelevantMessagesEqual(prev.nextMessage, next.nextMessage)
-        && prev.onMessageContentChange === next.onMessageContentChange
-        && prev.getAnimationHandlers === next.getAnimationHandlers
-        && prev.scrollToBottom === next.scrollToBottom
-        && prev.shouldAnimateUserMessage === next.shouldAnimateUserMessage
-        && prev.onUserAnimationConsumed === next.onUserAnimationConsumed
-        && prev.activeStreamingMessageId === next.activeStreamingMessageId
-        && prev.activeStreamingPhase === next.activeStreamingPhase;
-});
+};
 
 UngroupedMessageRow.displayName = 'UngroupedMessageRow';
 
@@ -874,7 +856,7 @@ const turnContainsMessageId = (turn: TurnRecord, messageId: string | null | unde
     return turn.assistantMessages.some((assistant) => assistant.info.id === messageId);
 };
 
-const MessageListEntry: React.FC<MessageListEntryProps> = React.memo(({
+const MessageListEntry: React.FC<MessageListEntryProps> = ({
     entry,
     onMessageContentChange,
     getAnimationHandlers,
@@ -926,95 +908,9 @@ const MessageListEntry: React.FC<MessageListEntryProps> = React.memo(({
             stickyUserHeader={stickyUserHeader}
         />
     );
-}, areMessageListEntryPropsEqual);
+};
 
 MessageListEntry.displayName = 'MessageListEntry';
-
-function areMessageListEntryPropsEqual(prevProps: MessageListEntryProps, nextProps: MessageListEntryProps): boolean {
-    if (prevProps.stickyUserHeader !== nextProps.stickyUserHeader) return false;
-    if (prevProps.chatRenderMode !== nextProps.chatRenderMode) return false;
-    if (prevProps.shouldAnimateUserMessage !== nextProps.shouldAnimateUserMessage) return false;
-
-    const prevEntry = prevProps.entry;
-    const nextEntry = nextProps.entry;
-    if (prevEntry.kind !== nextEntry.kind) return false;
-    if (prevEntry.key !== nextEntry.key) return false;
-
-    if (prevEntry.kind === 'turn' && nextEntry.kind === 'turn') {
-        if (prevEntry.turn !== nextEntry.turn || prevEntry.isLastTurn !== nextEntry.isLastTurn) {
-            return false;
-        }
-
-        const prevExpanded = (prevProps.turnUiStates.get(prevEntry.turn.turnId) ?? { isExpanded: prevProps.defaultActivityExpanded }).isExpanded;
-        const nextExpanded = (nextProps.turnUiStates.get(nextEntry.turn.turnId) ?? { isExpanded: nextProps.defaultActivityExpanded }).isExpanded;
-        if (prevExpanded !== nextExpanded) {
-            return false;
-        }
-
-        if (prevEntry.isLastTurn && prevProps.sessionIsWorking !== nextProps.sessionIsWorking) {
-            return false;
-        }
-
-        if (prevProps.activeStreamingMessageId !== nextProps.activeStreamingMessageId) {
-            const prevAffected = turnContainsMessageId(prevEntry.turn, prevProps.activeStreamingMessageId);
-            const nextAffected = turnContainsMessageId(nextEntry.turn, nextProps.activeStreamingMessageId);
-            if (prevAffected || nextAffected) {
-                return false;
-            }
-        }
-
-        if (prevProps.activeStreamingPhase !== nextProps.activeStreamingPhase) {
-            const prevAffected = turnContainsMessageId(prevEntry.turn, prevProps.activeStreamingMessageId);
-            const nextAffected = turnContainsMessageId(nextEntry.turn, nextProps.activeStreamingMessageId);
-            if (prevAffected || nextAffected) {
-                return false;
-            }
-        }
-
-        if (prevProps.activeStreamingPhase !== nextProps.activeStreamingPhase) {
-            const prevAffected = turnContainsMessageId(prevEntry.turn, prevProps.activeStreamingMessageId);
-            const nextAffected = turnContainsMessageId(nextEntry.turn, nextProps.activeStreamingMessageId);
-            if (prevAffected || nextAffected) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    if (prevEntry.kind === 'ungrouped' && nextEntry.kind === 'ungrouped') {
-        if (prevProps.activeStreamingMessageId !== nextProps.activeStreamingMessageId) {
-            const messageId = prevEntry.message.info.id;
-            const prevActive = prevProps.activeStreamingMessageId === messageId;
-            const nextActive = nextProps.activeStreamingMessageId === messageId;
-            if (prevActive !== nextActive) {
-                return false;
-            }
-        }
-
-        if (prevProps.activeStreamingPhase !== nextProps.activeStreamingPhase) {
-            const messageId = prevEntry.message.info.id;
-            if (prevProps.activeStreamingMessageId === messageId || nextProps.activeStreamingMessageId === messageId) {
-                return false;
-            }
-        }
-
-        if (prevProps.activeStreamingPhase !== nextProps.activeStreamingPhase) {
-            const messageId = prevEntry.message.info.id;
-            if (prevProps.activeStreamingMessageId === messageId || nextProps.activeStreamingMessageId === messageId) {
-                return false;
-            }
-        }
-
-        return (
-            areRenderRelevantMessagesEqual(prevEntry.message, nextEntry.message)
-            && areOptionalRenderRelevantMessagesEqual(prevEntry.previousMessage, nextEntry.previousMessage)
-            && areOptionalRenderRelevantMessagesEqual(prevEntry.nextMessage, nextEntry.nextMessage)
-        );
-    }
-
-    return false;
-}
 
 // Inner component that renders staged turn entries.
 const StaticHistoryList: React.FC<{
@@ -1035,7 +931,7 @@ const StaticHistoryList: React.FC<{
     shouldAnimateUserMessage: (message: ChatMessageEntry) => boolean;
     onUserAnimationConsumed: (messageId: string) => void;
     activeStreamingPhase?: StreamPhase | null;
-}> = React.memo(({ entries, shouldVirtualize, virtualRows, totalSize, measureElement, contentRef, onMessageContentChange, getAnimationHandlers, scrollToBottom, stickyUserHeader, defaultActivityExpanded, turnUiStates, onToggleTurnGroup, chatRenderMode, shouldAnimateUserMessage, onUserAnimationConsumed, activeStreamingPhase }) => {
+}> = ({ entries, shouldVirtualize, virtualRows, totalSize, measureElement, contentRef, onMessageContentChange, getAnimationHandlers, scrollToBottom, stickyUserHeader, defaultActivityExpanded, turnUiStates, onToggleTurnGroup, chatRenderMode, shouldAnimateUserMessage, onUserAnimationConsumed, activeStreamingPhase }) => {
     const renderEntry = React.useCallback((entry: RenderEntry) => {
         return (
             <MessageListEntry
@@ -1103,25 +999,7 @@ const StaticHistoryList: React.FC<{
             {paddingBottom > 0 ? <div aria-hidden="true" style={{ height: `${paddingBottom}px` }} /> : null}
         </div>
     );
-}, (prevProps, nextProps) => {
-    return prevProps.entries === nextProps.entries
-        && prevProps.shouldVirtualize === nextProps.shouldVirtualize
-        && prevProps.virtualRows === nextProps.virtualRows
-        && prevProps.totalSize === nextProps.totalSize
-        && prevProps.measureElement === nextProps.measureElement
-        && prevProps.contentRef === nextProps.contentRef
-        && prevProps.onMessageContentChange === nextProps.onMessageContentChange
-        && prevProps.getAnimationHandlers === nextProps.getAnimationHandlers
-        && prevProps.scrollToBottom === nextProps.scrollToBottom
-        && prevProps.stickyUserHeader === nextProps.stickyUserHeader
-        && prevProps.defaultActivityExpanded === nextProps.defaultActivityExpanded
-        && prevProps.turnUiStates === nextProps.turnUiStates
-        && prevProps.onToggleTurnGroup === nextProps.onToggleTurnGroup
-        && prevProps.chatRenderMode === nextProps.chatRenderMode
-        && prevProps.shouldAnimateUserMessage === nextProps.shouldAnimateUserMessage
-        && prevProps.onUserAnimationConsumed === nextProps.onUserAnimationConsumed
-        && prevProps.activeStreamingPhase === nextProps.activeStreamingPhase;
-});
+};
 
 StaticHistoryList.displayName = 'StaticHistoryList';
 
@@ -1140,7 +1018,7 @@ const StreamingTailContent: React.FC<{
     onUserAnimationConsumed: (messageId: string) => void;
     activeStreamingMessageId?: string | null;
     activeStreamingPhase?: StreamPhase | null;
-}> = React.memo(({
+}> = ({
     entry,
     onMessageContentChange,
     getAnimationHandlers,
@@ -1174,22 +1052,7 @@ const StreamingTailContent: React.FC<{
             activeStreamingPhase={activeStreamingPhase}
         />
     );
-}, (prev, next) => {
-    return prev.entry === next.entry
-        && prev.onMessageContentChange === next.onMessageContentChange
-        && prev.getAnimationHandlers === next.getAnimationHandlers
-        && prev.scrollToBottom === next.scrollToBottom
-        && prev.stickyUserHeader === next.stickyUserHeader
-        && prev.sessionIsWorking === next.sessionIsWorking
-        && prev.defaultActivityExpanded === next.defaultActivityExpanded
-        && prev.turnUiStates === next.turnUiStates
-        && prev.onToggleTurnGroup === next.onToggleTurnGroup
-        && prev.chatRenderMode === next.chatRenderMode
-        && prev.shouldAnimateUserMessage === next.shouldAnimateUserMessage
-        && prev.onUserAnimationConsumed === next.onUserAnimationConsumed
-        && prev.activeStreamingMessageId === next.activeStreamingMessageId
-        && prev.activeStreamingPhase === next.activeStreamingPhase;
-});
+};
 
 StreamingTailContent.displayName = 'StreamingTailContent';
 
@@ -1222,19 +1085,6 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
         previousOrder: string[];
         animatedIds: Set<string>;
     }>({ sessionKey: undefined, previousOrder: [], animatedIds: new Set() });
-    const baseDisplayCacheRef = React.useRef<{
-        input: ChatMessageEntry[];
-        output: ChatMessageEntry[];
-        outputIndexById: Map<string, number>;
-    } | null>(null);
-    const staticRenderEntriesCacheRef = React.useRef<{
-        input: ChatMessageEntry[];
-        output: RenderEntry[];
-        staticTurns: TurnRecord[];
-        lastTurnId: string | null;
-        ungroupedMessageIds: Set<string>;
-    } | null>(null);
-
     const stableGetAnimationHandlers = useStableEvent(getAnimationHandlers);
     const stableOnLoadOlder = useStableEvent(onLoadOlder);
     const stableScrollToBottom = useStableEvent((options?: { instant?: boolean; force?: boolean }) => {
@@ -1256,50 +1106,6 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
 
 
     const baseDisplayMessages = React.useMemo(() => streamPerfMeasure('ui.message_list.base_display_ms', () => {
-        const cached = baseDisplayCacheRef.current;
-        const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
-        const canUseTailFastPath = Boolean(lastMessage && isAssistantTextOnlyMessage(lastMessage));
-
-        if (cached && canUseTailFastPath && cached.input.length === messages.length && messages.length > 0) {
-            let changedCount = 0;
-            let changedIndex = -1;
-            let idsStable = true;
-
-            for (let index = 0; index < messages.length; index += 1) {
-                if (messages[index]?.info?.id !== cached.input[index]?.info?.id) {
-                    idsStable = false;
-                    break;
-                }
-                if (messages[index] !== cached.input[index]) {
-                    changedCount += 1;
-                    changedIndex = index;
-                    if (changedCount > 1) {
-                        break;
-                    }
-                }
-            }
-
-            if (idsStable && changedCount === 1 && changedIndex === messages.length - 1) {
-                const changedMessage = messages[changedIndex];
-                const previousMessage = changedIndex > 0 ? messages[changedIndex - 1] : undefined;
-                const bridgeSensitive = isUserSubtaskMessage(previousMessage) || isUserShellMarkerMessage(previousMessage);
-
-                if (changedMessage && isAssistantTextOnlyMessage(changedMessage) && !bridgeSensitive) {
-                    const outputIndex = cached.outputIndexById.get(changedMessage.info.id);
-                    if (outputIndex !== undefined) {
-                        const nextOutput = [...cached.output];
-                        nextOutput[outputIndex] = getNormalizedMessageForDisplay(changedMessage);
-                        baseDisplayCacheRef.current = {
-                            input: messages,
-                            output: nextOutput,
-                            outputIndexById: cached.outputIndexById,
-                        };
-                        return nextOutput;
-                    }
-                }
-            }
-        }
-
         const seenIdsFromTail = new Set<string>();
         const dedupedMessages: ChatMessageEntry[] = [];
         for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -1344,19 +1150,6 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
             output.push(currentWithRole);
         }
 
-        const outputIndexById = new Map<string, number>();
-        output.forEach((message, index) => {
-            const id = message.info?.id;
-            if (typeof id === 'string' && id.length > 0) {
-                outputIndexById.set(id, index);
-            }
-        });
-        baseDisplayCacheRef.current = {
-            input: messages,
-            output,
-            outputIndexById,
-        };
-
         return output;
     }), [messages]);
 
@@ -1386,48 +1179,6 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
         showTextJustificationActivity: chatRenderMode === 'sorted',
     });
     const staticRenderEntries = React.useMemo<RenderEntry[]>(() => streamPerfMeasure('ui.message_list.render_entries_ms', () => {
-        const cached = staticRenderEntriesCacheRef.current;
-        const lastMessage = displayMessages.length > 0 ? displayMessages[displayMessages.length - 1] : undefined;
-        const hasTrailingCandidate = Boolean(lastMessage) && (
-            (streamingTurn
-                ? (streamingTurn.userMessage.info.id === lastMessage?.info.id
-                    || streamingTurn.assistantMessages.some((assistant) => assistant.info.id === lastMessage?.info.id))
-                : false)
-            || (lastMessage ? projection.ungroupedMessageIds.has(lastMessage.info.id) : false)
-        );
-
-        if (
-            cached
-            && hasTrailingCandidate
-            && cached.input.length === displayMessages.length
-            && cached.staticTurns === staticTurns
-            && cached.lastTurnId === projection.lastTurnId
-            && cached.ungroupedMessageIds === projection.ungroupedMessageIds
-            && displayMessages.length > 0
-        ) {
-            let changedCount = 0;
-            let changedIndex = -1;
-            let idsStable = true;
-
-            for (let index = 0; index < displayMessages.length; index += 1) {
-                if (displayMessages[index]?.info?.id !== cached.input[index]?.info?.id) {
-                    idsStable = false;
-                    break;
-                }
-                if (displayMessages[index] !== cached.input[index]) {
-                    changedCount += 1;
-                    changedIndex = index;
-                    if (changedCount > 1) {
-                        break;
-                    }
-                }
-            }
-
-            if (idsStable && changedCount === 1 && changedIndex === displayMessages.length - 1) {
-                return cached.output;
-            }
-        }
-
         const turnEntries = staticTurns.map((turn) => ({
             kind: 'turn' as const,
             key: `turn:${turn.turnId}`,
@@ -1465,16 +1216,8 @@ const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(({
             });
         });
 
-        staticRenderEntriesCacheRef.current = {
-            input: displayMessages,
-            output: orderedEntries,
-            staticTurns,
-            lastTurnId: projection.lastTurnId,
-            ungroupedMessageIds: projection.ungroupedMessageIds,
-        };
-
         return orderedEntries;
-    }), [displayMessages, projection.lastTurnId, projection.ungroupedMessageIds, staticTurns, streamingTurn]);
+    }), [displayMessages, projection.lastTurnId, projection.ungroupedMessageIds, staticTurns]);
 
     const trailingStreamingEntry = React.useMemo<RenderEntry | undefined>(() => {
         if (streamingTurn) {
